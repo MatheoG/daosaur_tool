@@ -12,9 +12,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.trackWalletsAssets = exports.getWalletsAssets = void 0;
+exports.getContract = exports.trackWalletsAssets = exports.getWalletsAssets = void 0;
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = require("dotenv");
+const _1 = require(".");
 //recuperation des assets pour chaque adresse
 function getWalletsAssets(walletList) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -37,11 +38,12 @@ function getWalletsAssets(walletList) {
                     }
                 }).then((response) => __awaiter(this, void 0, void 0, function* () {
                     const data = yield response.data;
+                    console.log('Nombre d\'asset pour ' + address + ': ' + data.assets.length);
                     assets.push(...data.assets);
                     cursor = data === null || data === void 0 ? void 0 : data.next;
                 }));
                 yield new Promise(resolve => setTimeout(resolve, 1000));
-            } while (cursor != null);
+            } while (cursor);
             //  console.log('Adresse: ' + i)
             adressAssets[address] = assets;
         }
@@ -54,9 +56,10 @@ function trackWalletsAssets(walletList) {
         console.log('Tracking...');
         let oldWalletAsset = yield getWalletsAssets(walletList);
         while (true) {
+            console.log('Checking...');
             const walletAsset = yield getWalletsAssets(walletList);
             for (const address of walletList) {
-                //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
+                console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length);
                 let nandList = oldWalletAsset[address]
                     .filter((item) => !walletAsset[address].some((z) => z.id === item.id))
                     .concat(walletAsset[address].filter((item) => !oldWalletAsset[address].some((z) => z.id === item.id)));
@@ -79,7 +82,7 @@ function trackWalletsAssets(walletList) {
                             let event = '';
                             let y = 0;
                             //on recupere le dernier evenement
-                            while (event.event_type != 'successful' && event.event_type != 'transfer') {
+                            while ((event === null || event === void 0 ? void 0 : event.event_type) != 'successful' && (event === null || event === void 0 ? void 0 : event.event_type) != 'transfer') {
                                 event = response.data.asset_events[y];
                                 y++;
                             }
@@ -88,10 +91,12 @@ function trackWalletsAssets(walletList) {
                                 //si l'asset est dans l'ancienne liste c'est une vente
                                 if (asset in oldWalletAsset[address]) {
                                     console.log('vente on adresse: ' + address + " " + asset.name + " " + asset.token_id);
+                                    (0, _1.sell)(asset);
                                 }
                                 //si l'asset est dans la nouvelle liste c'est un achat
                                 else {
                                     console.log('achat on adresse: ' + address + " " + asset.name + " " + asset.token_id);
+                                    (0, _1.buy)(asset);
                                 }
                                 //si c'est un transfert
                             }
@@ -105,6 +110,7 @@ function trackWalletsAssets(walletList) {
                                     //si il provient d'une adresse vide c'est un mint
                                     if (event.from_account.address == '0x0000000000000000000000000000000000000000') {
                                         console.log('mint on adresse: ' + address + " " + asset.name + " " + asset.token_id);
+                                        (0, _1.mint)(asset);
                                         //sinon c'est un airdrop
                                     }
                                     else {
@@ -119,8 +125,23 @@ function trackWalletsAssets(walletList) {
             }
             oldWalletAsset = walletAsset;
             //console.log('Analyse terminée on recommence')
+            yield new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
         }
     });
 }
 exports.trackWalletsAssets = trackWalletsAssets;
+function getContract(collection) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const openseaUrl = 'https://api.opensea.io/api/v1/asset_contract/' + collection;
+        axios_1.default.get(openseaUrl, {
+            headers: {
+                'X-API-KEY': process.env.OPENSEA_API_KEY
+            },
+        }).then((response) => __awaiter(this, void 0, void 0, function* () {
+            const data = yield response.data;
+            return data;
+        }));
+    });
+}
+exports.getContract = getContract;
 (0, dotenv_1.config)();

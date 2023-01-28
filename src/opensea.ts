@@ -24,11 +24,12 @@ export async function getWalletsAssets(walletList: string[]) {
                 }
             }).then(async (response) => {
                 const data = await response.data
+                console.log('Nombre d\'asset pour ' + address + ': ' + data.assets.length)
                 assets.push(...data.assets)
                 cursor = data?.next
             });
             await new Promise(resolve => setTimeout(resolve, 1000));
-        } while (cursor != null)
+        } while (cursor)
         //  console.log('Adresse: ' + i)
         adressAssets[address] = assets
     }
@@ -39,9 +40,10 @@ export async function trackWalletsAssets(walletList: string[]) {
     console.log('Tracking...')
     let oldWalletAsset = await getWalletsAssets(walletList)
     while (true) {
+        console.log('Checking...')
         const walletAsset = await getWalletsAssets(walletList)
         for (const address of walletList) {
-            //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
+            console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
             let nandList = oldWalletAsset[address]
                 .filter((item: asset) => !walletAsset[address].some((z: asset) => z.id === item.id))
                 .concat(walletAsset[address].filter((item: asset) => !oldWalletAsset[address].some((z: asset) => z.id === item.id)));
@@ -64,7 +66,7 @@ export async function trackWalletsAssets(walletList: string[]) {
                         let event: any = ''
                         let y = 0
                         //on recupere le dernier evenement
-                        while (event.event_type != 'successful' && event.event_type != 'transfer') {
+                        while (event?.event_type != 'successful' && event?.event_type != 'transfer') {
                             event = response.data.asset_events[y]
                             y++;
                         }
@@ -106,12 +108,13 @@ export async function trackWalletsAssets(walletList: string[]) {
         }
         oldWalletAsset = walletAsset
         //console.log('Analyse terminée on recommence')
+        await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
     }
 
 }
 
 export async function getContract(collection: string) {
-    const openseaUrl = 'https://api.opensea.io/api/v1/asset_contract/'+collection
+    const openseaUrl = 'https://api.opensea.io/api/v1/asset_contract/' + collection
     axios.get(openseaUrl, {
         headers: {
             'X-API-KEY': process.env.OPENSEA_API_KEY
