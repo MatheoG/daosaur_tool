@@ -36,8 +36,12 @@ function getWalletsAssets(walletList) {
                         limit: 50,
                         cursor: cursor,
                     }
-                }).then((response) => __awaiter(this, void 0, void 0, function* () {
-                    const data = yield response.data;
+                })
+                    .catch((error) => __awaiter(this, void 0, void 0, function* () {
+                    console.log("Erreur lors de la requete de récupération des assets");
+                }))
+                    .then((response) => __awaiter(this, void 0, void 0, function* () {
+                    const data = yield (response === null || response === void 0 ? void 0 : response.data);
                     console.log('Nombre d\'asset pour ' + address + ': ' + data.assets.length);
                     assets.push(...data.assets);
                     cursor = data === null || data === void 0 ? void 0 : data.next;
@@ -77,13 +81,17 @@ function trackWalletsAssets(walletList) {
                                 token_id: asset.token_id,
                                 limit: 50,
                             },
-                        }).then((response) => __awaiter(this, void 0, void 0, function* () {
-                            const data = yield response.data;
+                        })
+                            .catch((error) => __awaiter(this, void 0, void 0, function* () {
+                            console.log("Erreur lors de la requete de récupération des events");
+                        }))
+                            .then((response) => __awaiter(this, void 0, void 0, function* () {
+                            const data = yield (response === null || response === void 0 ? void 0 : response.data);
                             let event = '';
                             let y = 0;
                             //on recupere le dernier evenement
                             while ((event === null || event === void 0 ? void 0 : event.event_type) != 'successful' && (event === null || event === void 0 ? void 0 : event.event_type) != 'transfer') {
-                                event = response.data.asset_events[y];
+                                event = response === null || response === void 0 ? void 0 : response.data.asset_events[y];
                                 y++;
                             }
                             //si c'est un achat ou une vente

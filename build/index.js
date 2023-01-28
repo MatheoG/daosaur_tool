@@ -41,7 +41,7 @@ axios_1.default.get(sheetUrl).then((response) => __awaiter(void 0, void 0, void 
         const address = line.split('"')[1].replace(" ", "").replace('\t', '');
         AddressList.push(address);
     }
-    AddressList = ['0xAF0bF449840aE803cB1F9ECdb8e14E57086269D6', '0x4e21da6a36213b6d1a5330efad5223a88f00aa2c'];
+    //AddressList = ['0xAF0bF449840aE803cB1F9ECdb8e14E57086269D6', '0x4e21da6a36213b6d1a5330efad5223a88f00aa2c']
     (0, opensea_1.trackWalletsAssets)(AddressList);
 }));
 let collectionBuyHistory = [];
