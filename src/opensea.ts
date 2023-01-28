@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { config } from 'dotenv';
 import { asset } from './interface';
-
+import { sell, buy, mint } from '.';
 
 //recuperation des assets pour chaque adresse
 export async function getWalletsAssets(walletList: string[]) {
@@ -73,10 +73,13 @@ export async function trackWalletsAssets(walletList: string[]) {
                             //si l'asset est dans l'ancienne liste c'est une vente
                             if (asset in oldWalletAsset[address]) {
                                 console.log('vente on adresse: ' + address + " " + asset.name + " " + asset.token_id)
+                                sell(asset)
                             }
                             //si l'asset est dans la nouvelle liste c'est un achat
                             else {
+
                                 console.log('achat on adresse: ' + address + " " + asset.name + " " + asset.token_id)
+                                buy(asset)
                             }
                             //si c'est un transfert
                         } else {
@@ -88,6 +91,7 @@ export async function trackWalletsAssets(walletList: string[]) {
                                 //si il provient d'une adresse vide c'est un mint
                                 if (event.from_account.address == '0x0000000000000000000000000000000000000000') {
                                     console.log('mint on adresse: ' + address + " " + asset.name + " " + asset.token_id)
+                                    mint(asset)
                                     //sinon c'est un airdrop
                                 } else {
                                     console.log('airdrop on adresse: ' + address + " " + asset.name + " " + asset.token_id)
