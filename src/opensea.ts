@@ -22,8 +22,12 @@ export async function getWalletsAssets(walletList: string[]) {
                     limit: 50,
                     cursor: cursor,
                 }
-            }).then(async (response) => {
-                const data = await response.data
+            })
+            .catch(async (error) => {
+                console.log("Erreur lors de la requete de récupération des assets")
+            })
+            .then(async (response) => {
+                const data = await response?.data
                 console.log('Nombre d\'asset pour ' + address + ': ' + data.assets.length)
                 assets.push(...data.assets)
                 cursor = data?.next
@@ -61,13 +65,17 @@ export async function trackWalletsAssets(walletList: string[]) {
                             token_id: asset.token_id,
                             limit: 50,
                         },
-                    }).then(async (response) => {
-                        const data = await response.data
+                    })
+                    .catch(async (error) => {
+                        console.log("Erreur lors de la requete de récupération des events")
+                    })
+                    .then(async (response) => {
+                        const data = await response?.data
                         let event: any = ''
                         let y = 0
                         //on recupere le dernier evenement
                         while (event?.event_type != 'successful' && event?.event_type != 'transfer') {
-                            event = response.data.asset_events[y]
+                            event = response?.data.asset_events[y]
                             y++;
                         }
                         //si c'est un achat ou une vente
