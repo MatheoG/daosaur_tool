@@ -47,7 +47,7 @@ export async function getWalletsAssets(walletList: string[]) {
 
 export async function trackWalletsAssets(walletList: string[]) {
     console.log('Tracking...')
-    let oldWalletFile = fs.readFileSync('oldWallet.json', 'utf8')
+    const oldWalletFile = fs.readFileSync('./oldWallet.json', 'utf8')
     let oldWalletAsset = JSON.parse(oldWalletFile) ? JSON.parse(oldWalletFile) : await getWalletsAssets(walletList)
     while (true) {
         console.log('Checking...')
@@ -125,7 +125,7 @@ export async function trackWalletsAssets(walletList: string[]) {
             }
         }
         oldWalletAsset = walletAsset
-        fs.writeFileSync('oldWallet.json', JSON.stringify(oldWalletAsset))
+        fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset))
         //console.log('Analyse terminée on recommence')
         //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
     }
