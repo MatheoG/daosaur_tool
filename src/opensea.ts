@@ -27,7 +27,7 @@ export async function getWalletsAssets(walletList: string[]) {
                 })
                 .then(async (response) => {
                     const data = await response?.data
-                    console.log('Nombre d\'asset pour ' + address + ': ' + data.assets.length)
+                    //console.log('Nombre d\'asset pour ' + address + ': ' + data.assets.length)
                     assets.push(...data.assets)
                     cursor = data?.next
                 })
@@ -39,7 +39,7 @@ export async function getWalletsAssets(walletList: string[]) {
             }
             await new Promise(resolve => setTimeout(resolve, 1000));
         } while (cursor)
-        //  console.log('Adresse: ' + i)
+        console.log('Adresse: ' + i + '/' + walletList.length + ' - Nombre d\'asset pour ' + address + ': ' + assets.length)
         adressAssets[address] = assets
     }
     return adressAssets
@@ -48,11 +48,11 @@ export async function getWalletsAssets(walletList: string[]) {
 export async function trackWalletsAssets(walletList: string[]) {
     console.log('Tracking...')
     const oldWalletFile = fs.readFileSync('./oldWallet.json', 'utf8')
-    let oldWalletAsset = JSON.parse(oldWalletFile) ? JSON.parse(oldWalletFile) : await getWalletsAssets(walletList)
+    let oldWalletAsset = oldWalletFile.length>0 ? JSON.parse(oldWalletFile) : await getWalletsAssets(walletList)
     while (true) {
         console.log('Checking...')
         const walletAsset = await getWalletsAssets(walletList)
-        for (const address of walletList) {
+        walletList.forEach((address) => async () => {
             console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
             let nandList = oldWalletAsset[address]
                 .filter((item: asset) => !walletAsset[address].some((z: asset) => z.id === item.id))
@@ -123,7 +123,7 @@ export async function trackWalletsAssets(walletList: string[]) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
-        }
+        });
         oldWalletAsset = walletAsset
         fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset))
         //console.log('Analyse terminée on recommence')
