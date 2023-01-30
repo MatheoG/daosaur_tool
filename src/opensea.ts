@@ -11,7 +11,7 @@ async function getAdresseAsset(address:string){
     let error = false;
     //on boucle jusqu'a ce qu'il n'y ait plus d'erreur
     do {
-        axios.get(openseaUrl, {
+        await axios.get(openseaUrl, {
             headers: {
                 'X-API-KEY': process.env.OPENSEA_API_KEY
             },
