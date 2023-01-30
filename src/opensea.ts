@@ -65,6 +65,9 @@ export async function trackWalletsAssets(walletList: string[]) {
             let nandList = oldWalletAsset[address]
                 .filter((item: asset) => !walletAsset[address].some((z: asset) => z.id === item.id))
                 .concat(walletAsset[address].filter((item: asset) => !oldWalletAsset[address].some((z: asset) => z.id === item.id)));
+            if(walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0){
+                console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length)
+            }
             console.log("pour l'adresse " + address + " - " +nandList.length + ' asset(s) ont changé');
             //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
             if (nandList.length > 0 && nandList.length < 100) {
@@ -89,7 +92,7 @@ export async function trackWalletsAssets(walletList: string[]) {
                                 },
                             })
                             .then(async (response) => {
-                                if(response.status != 200){
+                                if(response.status == 200){
                                     const data = await response?.data
                                     let event: any = ''
                                     let y = 0
@@ -129,11 +132,13 @@ export async function trackWalletsAssets(walletList: string[]) {
                                     error = false
                                 }else{
                                     console.log("Erreur lors de la requete de récupération des events")
+                                    console.log(response)
                                     error = true
                                 }
                             })
                             .catch(async (error) => {
                                 console.log("Erreur lors de la requete de récupération des events")
+                                console.log(error)
                                 error = true
                             })
 
@@ -159,9 +164,9 @@ export async function trackWalletsAssets(walletList: string[]) {
             if(nandList.length > 100){
                 console.log('Resultat erroné trop d\'asset ont changé')
             }
-            oldWalletAsset = walletAsset
             //fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
         }
+        oldWalletAsset = walletAsset
         //console.log('Analyse terminée on recommence')
         //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
     }

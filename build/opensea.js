@@ -16,7 +16,6 @@ exports.getContract = exports.trackWalletsAssets = exports.getWalletsAssets = vo
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = require("dotenv");
 const _1 = require(".");
-const fs_1 = __importDefault(require("fs"));
 function getAdresseAsset(address) {
     return __awaiter(this, void 0, void 0, function* () {
         const openseaUrl = 'https://api.opensea.io/api/v1/assets';
@@ -73,18 +72,21 @@ exports.getWalletsAssets = getWalletsAssets;
 function trackWalletsAssets(walletList) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log('Tracking lancé le ' + new Date().toLocaleString());
-        const oldWalletFile = fs_1.default.readFileSync('./oldWallet.json', 'utf8');
+        const oldWalletFile = ''; // fs.readFileSync('./oldWallet.json', 'utf8')
         let oldWalletAsset = oldWalletFile.length > 0 ? JSON.parse(oldWalletFile) : yield getWalletsAssets(walletList);
         while (true) {
             console.log('Checking...');
             const walletAsset = yield getWalletsAssets(walletList);
             for (const address of walletList) {
-                console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length);
+                //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
                 //nand pour voir les asset different entre l'ancienne liste et la nouvelle
                 let nandList = oldWalletAsset[address]
                     .filter((item) => !walletAsset[address].some((z) => z.id === item.id))
                     .concat(walletAsset[address].filter((item) => !oldWalletAsset[address].some((z) => z.id === item.id)));
-                console.log(nandList.length + ' asset(s) ont changé');
+                if (walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0) {
+                    console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length);
+                }
+                console.log("pour l'adresse " + address + " - " + nandList.length + ' asset(s) ont changé');
                 //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
                 if (nandList.length > 0 && nandList.length < 100) {
                     for (const asset of nandList) {
@@ -109,7 +111,7 @@ function trackWalletsAssets(walletList) {
                             })
                                 .then((response) => __awaiter(this, void 0, void 0, function* () {
                                 var _a;
-                                if (response.status != 200) {
+                                if (response.status == 200) {
                                     const data = yield (response === null || response === void 0 ? void 0 : response.data);
                                     let event = '';
                                     let y = 0;
@@ -153,11 +155,13 @@ function trackWalletsAssets(walletList) {
                                 }
                                 else {
                                     console.log("Erreur lors de la requete de récupération des events");
+                                    console.log(response);
                                     error = true;
                                 }
                             }))
                                 .catch((error) => __awaiter(this, void 0, void 0, function* () {
                                 console.log("Erreur lors de la requete de récupération des events");
+                                console.log(error);
                                 error = true;
                             }));
                         } while (error || cursor);
@@ -187,9 +191,9 @@ function trackWalletsAssets(walletList) {
                 if (nandList.length > 100) {
                     console.log('Resultat erroné trop d\'asset ont changé');
                 }
-                oldWalletAsset = walletAsset;
-                fs_1.default.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
+                //fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
             }
+            oldWalletAsset = walletAsset;
             //console.log('Analyse terminée on recommence')
             //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
         }
