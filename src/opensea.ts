@@ -22,6 +22,7 @@ async function getAdresseAsset(address:string){
             }
         })
         .then(async (response) => {
+            console.log(response.data)
             if(response.status == 200){
                 assets.push(...response.data.assets)
                 cursor = response.data.next
@@ -58,14 +59,15 @@ export async function trackWalletsAssets(walletList: string[]) {
     while (true) {
         console.log('Checking...')
         const walletAsset = await getWalletsAssets(walletList)
-        walletList.forEach((address) => async () => {
+        for(const address of walletList){
             console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
             //nand pour voir les asset different entre l'ancienne liste et la nouvelle
             let nandList = oldWalletAsset[address]
                 .filter((item: asset) => !walletAsset[address].some((z: asset) => z.id === item.id))
                 .concat(walletAsset[address].filter((item: asset) => !oldWalletAsset[address].some((z: asset) => z.id === item.id)));
             //console.log(nandList);
-            if (nandList.length > 0) {
+            //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
+            if (nandList.length > 0 && nandList.length < 100) {
                 for (const asset of nandList) {
                     //pour chaque asset qui a changé on recupere les evenements
                     const openseaUrl = 'https://api.opensea.io/api/v1/events'
@@ -153,10 +155,13 @@ export async function trackWalletsAssets(walletList: string[]) {
                         console.log('unknown event type')
                     }
                 }
+            }    
+            if(nandList.length > 100){
+                console.log('Resultat erroné trop d\'asset ont changé')
             }
-        });
-        oldWalletAsset = walletAsset
-        fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset))
+            oldWalletAsset = walletAsset
+            fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
+        }
         //console.log('Analyse terminée on recommence')
         //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
     }
