@@ -22,7 +22,7 @@ async function getAdresseAsset(address:string){
             }
         })
         .then(async (response) => {
-            console.log(response.data)
+            //console.log(response.data)
             if(response.status == 200){
                 assets.push(...response.data.assets)
                 cursor = response.data.next
