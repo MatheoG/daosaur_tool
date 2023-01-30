@@ -54,18 +54,18 @@ export async function getWalletsAssets(walletList: string[]) {
 }
 export async function trackWalletsAssets(walletList: string[]) {
     console.log('Tracking lancé le ' + new Date().toLocaleString());
-    const oldWalletFile = fs.readFileSync('./oldWallet.json', 'utf8')
+    const oldWalletFile = '' // fs.readFileSync('./oldWallet.json', 'utf8')
     let oldWalletAsset = oldWalletFile.length>0 ? JSON.parse(oldWalletFile) : await getWalletsAssets(walletList)
     while (true) {
         console.log('Checking...')
         const walletAsset = await getWalletsAssets(walletList)
         for(const address of walletList){
-            console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
+            //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
             //nand pour voir les asset different entre l'ancienne liste et la nouvelle
             let nandList = oldWalletAsset[address]
                 .filter((item: asset) => !walletAsset[address].some((z: asset) => z.id === item.id))
                 .concat(walletAsset[address].filter((item: asset) => !oldWalletAsset[address].some((z: asset) => z.id === item.id)));
-            //console.log(nandList);
+            console.log("pour l'adresse " + address + " - " +nandList.length + ' asset(s) ont changé');
             //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
             if (nandList.length > 0 && nandList.length < 100) {
                 for (const asset of nandList) {
@@ -160,7 +160,7 @@ export async function trackWalletsAssets(walletList: string[]) {
                 console.log('Resultat erroné trop d\'asset ont changé')
             }
             oldWalletAsset = walletAsset
-            fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
+            //fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
         }
         //console.log('Analyse terminée on recommence')
         //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));

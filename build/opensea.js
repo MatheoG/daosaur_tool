@@ -25,7 +25,7 @@ function getAdresseAsset(address) {
         let error = false;
         //on boucle jusqu'a ce qu'il n'y ait plus d'erreur
         do {
-            axios_1.default.get(openseaUrl, {
+            yield axios_1.default.get(openseaUrl, {
                 headers: {
                     'X-API-KEY': process.env.OPENSEA_API_KEY
                 },
@@ -36,6 +36,7 @@ function getAdresseAsset(address) {
                 }
             })
                 .then((response) => __awaiter(this, void 0, void 0, function* () {
+                //console.log(response.data)
                 if (response.status == 200) {
                     assets.push(...response.data.assets);
                     cursor = response.data.next;
@@ -77,14 +78,15 @@ function trackWalletsAssets(walletList) {
         while (true) {
             console.log('Checking...');
             const walletAsset = yield getWalletsAssets(walletList);
-            walletList.forEach((address) => () => __awaiter(this, void 0, void 0, function* () {
+            for (const address of walletList) {
                 console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length);
                 //nand pour voir les asset different entre l'ancienne liste et la nouvelle
                 let nandList = oldWalletAsset[address]
                     .filter((item) => !walletAsset[address].some((z) => z.id === item.id))
                     .concat(walletAsset[address].filter((item) => !oldWalletAsset[address].some((z) => z.id === item.id)));
-                //console.log(nandList);
-                if (nandList.length > 0) {
+                console.log(nandList.length + ' asset(s) ont changé');
+                //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
+                if (nandList.length > 0 && nandList.length < 100) {
                     for (const asset of nandList) {
                         //pour chaque asset qui a changé on recupere les evenements
                         const openseaUrl = 'https://api.opensea.io/api/v1/events';
@@ -182,9 +184,12 @@ function trackWalletsAssets(walletList) {
                         }
                     }
                 }
-            }));
-            oldWalletAsset = walletAsset;
-            fs_1.default.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
+                if (nandList.length > 100) {
+                    console.log('Resultat erroné trop d\'asset ont changé');
+                }
+                oldWalletAsset = walletAsset;
+                fs_1.default.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
+            }
             //console.log('Analyse terminée on recommence')
             //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
         }
