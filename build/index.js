@@ -61,7 +61,7 @@ function sell(asset) {
         // if(nb >= 2){
         const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_SELL_CHANNEL ? process.env.DISCORD_SELL_CHANNEL : "");
         if (channel && 'send' in channel) {
-            channel.send(`New sell in last 48 hours of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
+            channel.send(`New sell of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
         }
         // }
         // collectionSellHistory.push({
@@ -84,7 +84,7 @@ function buy(asset) {
         // if (nb >= 2) {
         const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_BUY_CHANNEL ? process.env.DISCORD_BUY_CHANNEL : "");
         if (channel && 'send' in channel) {
-            channel.send(`New buy in last 48 hours of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
+            channel.send(`New buy of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
         }
         // }
         // collectionBuyHistory.push({
@@ -107,7 +107,7 @@ function mint(asset) {
         // if(nb >= 2){
         const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_MINT_CHANNEL ? process.env.DISCORD_MINT_CHANNEL : "");
         if (channel && 'send' in channel) {
-            channel.send(`New mints in last 48 hours of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
+            channel.send(`New mints of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
         }
         // }
         // collectionMintHistory.push({
