@@ -52,6 +52,50 @@ export async function getWalletsAssets(walletList: string[]) {
     }
     return adressAssets
 }
+
+async function getAssetEvent(asset: asset) {
+    const openseaUrl = 'https://api.opensea.io/api/v1/events'
+    let error = false
+    let cursor:string = ''
+    //on boucle jusqu'a ce qu'il n'y ait plus d'erreur
+    do {
+        await new Promise(resolve => setTimeout(resolve, 4000));
+        const response = await axios.get(openseaUrl, {
+            headers: {
+                'X-API-KEY': process.env.OPENSEA_API_KEY
+            },
+            params: {
+                asset_contract_address: asset.asset_contract.address,
+                token_id: asset.token_id,
+                cursor: cursor,
+            },
+        })
+        .catch(async (error) => {
+            console.log("Erreur lors de la requete de récupération des events")
+            error = true
+        });
+        if(response && response.status == 200){
+            const data = await response?.data
+            for (const event of data?.asset_events) {
+                if (event.event_type === 'successful') {
+                    return 'successful'
+                } 
+                else if (event.event_type === 'transfer' && event.from_account.address == '0x0000000000000000000000000000000000000000') {
+                    return 'mint'  
+                } 
+                else if (event.event_type === 'transfer') {
+                    return 'transfer'
+                }
+            }
+            cursor = data?.next
+        }else{
+            console.log("Erreur lors de la requete de récupération des events")
+            error = true
+        }
+    } while (cursor || error)
+    return 'no event'
+}
+
 export async function trackWalletsAssets(walletList: string[]) {
     console.log('Tracking lancé le ' + new Date().toLocaleString());
     const oldWalletFile = '' // fs.readFileSync('./oldWallet.json', 'utf8')
@@ -72,89 +116,46 @@ export async function trackWalletsAssets(walletList: string[]) {
             //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
             if (nandList.length > 0 && nandList.length < 100) {
                 for (const asset of nandList) {
-                    //pour chaque asset qui a changé on recupere les evenements
-                    const openseaUrl = 'https://api.opensea.io/api/v1/events'
-                    let error = false           
-                    let eventType = ''
-                    let cursor:string | null = null
-                    //on boucle jusqu'a ce qu'il n'y ait plus d'erreur       
-                    do{
-                            await new Promise(resolve => setTimeout(resolve, 4000));
-                            await axios.get(openseaUrl, {
-                                headers: {
-                                    'X-API-KEY': process.env.OPENSEA_API_KEY
-                                },
-                                params: {
-                                    asset_contract_address: asset.asset_contract.address,
-                                    token_id: asset.token_id,
-                                    limit: 200,
-                                    cursor: cursor,
-                                },
-                            })
-                            .then(async (response) => {
-                                if(response.status == 200){
-                                    const data = await response?.data
-                                    let event: any = ''
-                                    let y = 0
-                                    cursor = response?.data?.next
-                                    //on recupere le dernier evenement
-                                    while (event?.event_type != 'successful' && event?.event_type != 'transfer') {
-                                        event = response?.data.asset_events[y]
-                                        y++;
-                                    }
-                                    //si c'est un achat ou une vente
-                                    if (event.event_type == 'successful') {
-                                        //si l'asset est dans l'ancienne liste c'est une vente
-                                        if (asset in oldWalletAsset[address]) {
-                                            eventType = 'sell'
-                                        }
-                                        //si l'asset est dans la nouvelle liste c'est un achat
-                                        else {
-                                            eventType = 'buy'
-                                        }
-                                        //si c'est un transfert
-                                    } else {
-                                        //si l'asset est dans l'ancienne liste c'est un envoi
-                                        if (asset in oldWalletAsset[address]) {
-                                            eventType = 'send'
-                                            //si l'asset est dans la nouvelle liste c'est un asset reçu
-                                        } else {
-                                            //si il provient d'une adresse vide c'est un mint
-                                            if (event.from_account.address == '0x0000000000000000000000000000000000000000') {
-                                                eventType = 'mint'
-                                                //sinon c'est un airdrop
-                                            } else {
-                                                eventType = 'airdrop'
-                                            }
-                                        }
-                                    }
-                                    eventType = event?.event_type
-                                    error = false
-                                }else{
-                                    console.log("Erreur lors de la requete de récupération des events")
-                                    console.log(response)
-                                    error = true
-                                }
-                            })
-                            .catch(async (error) => {
-                                console.log("Erreur lors de la requete de récupération des events")
-                                console.log(error)
-                                error = true
-                            })
-
-                    }while(error || cursor)
-                    if(eventType == 'sell'){
+                    let action = ''
+                    const event = await getAssetEvent(asset)  
+                    //si c'est un achat ou une vente
+                    if (event == 'successful') {
+                        //si l'asset est dans l'ancienne liste c'est une vente
+                        if (asset in oldWalletAsset[address]) {
+                            action = 'sell'
+                        }
+                        //si l'asset est dans la nouvelle liste c'est un achat
+                        else {
+                            action = 'buy'
+                        }
+                        //si c'est un transfert
+                    }
+                    else if(event == 'mint') {
+                        action = 'mint'
+                    } 
+                    else if(event == 'transfer') {
+                        //si l'asset est dans l'ancienne liste c'est un envoi
+                        if (asset in oldWalletAsset[address]) {
+                            action = 'send'
+                            //si l'asset est dans la nouvelle liste c'est un asset reçu
+                        } else {
+                            action = 'airdrop' 
+                        }
+                    }else{
+                        console.log('Erreur lors de la récupération de l\'event pour l\'asset ' + asset.name + ' sur l\'adresse ' + address)
+                    }
+                    if(action == 'sell'){
                         console.log('Vente de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
                         sell(asset)
-                    }else if(eventType == 'buy'){
+                    }else if(action == 'buy'){
                         console.log('Achat de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
                         buy(asset)
-                    }else if(eventType == 'mint'){
+                    }else if(action == 'mint'){
                         console.log('Mint de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
                         mint(asset)
-                    }else if(eventType == 'airdrop'){
+                    }else if(action == 'airdrop'){
                         console.log('Airdrop de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
-                    }else if(eventType == 'send'){
+                    }else if(action == 'send'){
                         console.log('Envoi de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
                     }else {
                         console.log('unknown event type')
