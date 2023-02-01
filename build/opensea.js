@@ -17,6 +17,7 @@ const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = require("dotenv");
 const _1 = require(".");
 function getAdresseAsset(address) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const openseaUrl = 'https://api.opensea.io/api/v1/assets';
         let assets = [];
@@ -24,7 +25,7 @@ function getAdresseAsset(address) {
         let error = false;
         //on boucle jusqu'a ce qu'il n'y ait plus d'erreur
         do {
-            yield axios_1.default.get(openseaUrl, {
+            const response = yield axios_1.default.get(openseaUrl, {
                 headers: {
                     'X-API-KEY': process.env.OPENSEA_API_KEY
                 },
@@ -34,23 +35,21 @@ function getAdresseAsset(address) {
                     cursor: cursor,
                 }
             })
-                .then((response) => __awaiter(this, void 0, void 0, function* () {
-                //console.log(response.data)
-                if (response.status == 200) {
-                    assets.push(...response.data.assets);
-                    cursor = response.data.next;
-                }
-                else {
-                    console.log("Erreur lors de la requete de récupération des assets");
-                    error = true;
-                }
-            }))
                 .catch((error) => __awaiter(this, void 0, void 0, function* () {
-                console.log("Erreur lors de la requete de récupération des assets");
+                console.log("Erreur lors de la requete de récupération des assets, owner: " + address + ", limit: 200, cursor: " + cursor + "");
                 error = true;
             }));
+            if (response && response.status == 200 && ((_a = response.data) === null || _a === void 0 ? void 0 : _a.assets) && response.data.assets.length > 0) {
+                assets.push(...response.data.assets);
+                cursor = response.data.next;
+                error = false;
+            }
+            else {
+                console.log("Erreur lors de la requete de récupération des assets, owner: " + address + ", limit: 200, cursor: " + cursor + "");
+                error = true;
+            }
             yield new Promise(r => setTimeout(r, 4000));
-        } while (cursor && !error);
+        } while (cursor || error);
         return assets;
     });
 }
@@ -93,14 +92,19 @@ function getAssetEvent(asset) {
             }));
             if (response && response.status == 200) {
                 const data = yield (response === null || response === void 0 ? void 0 : response.data);
-                for (const event of data === null || data === void 0 ? void 0 : data.asset_events) {
-                    if (event.event_type === 'successful') {
+                let i = 0;
+                while (i < (data === null || data === void 0 ? void 0 : data.asset_events.length)) {
+                    const event = data === null || data === void 0 ? void 0 : data.asset_events[i];
+                    if (event.event_type == 'successful') {
                         return 'successful';
                     }
-                    else if (event.event_type === 'transfer' && event.from_account.address == '0x0000000000000000000000000000000000000000') {
+                    else if (event.event_type == 'transfer' && event.from_account.address == '0x0000000000000000000000000000000000000000') {
                         return 'mint';
                     }
-                    else if (event.event_type === 'transfer') {
+                    else if (event.event_type == 'transfer') {
+                        if (i < (data === null || data === void 0 ? void 0 : data.asset_events.length) - 1 && (data === null || data === void 0 ? void 0 : data.asset_events[i + 1].event_type) == 'successful') {
+                            return 'successful';
+                        }
                         return 'transfer';
                     }
                 }
@@ -115,6 +119,7 @@ function getAssetEvent(asset) {
     });
 }
 function trackWalletsAssets(walletList) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     return __awaiter(this, void 0, void 0, function* () {
         console.log('Tracking lancé le ' + new Date().toLocaleString());
         const oldWalletFile = ''; // fs.readFileSync('./oldWallet.json', 'utf8')
@@ -140,7 +145,7 @@ function trackWalletsAssets(walletList) {
                         //si c'est un achat ou une vente
                         if (event == 'successful') {
                             //si l'asset est dans l'ancienne liste c'est une vente
-                            if (asset in oldWalletAsset[address]) {
+                            if (oldWalletAsset[address].find((x) => x.id == asset.id)) {
                                 action = 'sell';
                             }
                             //si l'asset est dans la nouvelle liste c'est un achat
@@ -154,7 +159,7 @@ function trackWalletsAssets(walletList) {
                         }
                         else if (event == 'transfer') {
                             //si l'asset est dans l'ancienne liste c'est un envoi
-                            if (asset in oldWalletAsset[address]) {
+                            if (oldWalletAsset[address].find((x) => x.id == asset.id)) {
                                 action = 'send';
                                 //si l'asset est dans la nouvelle liste c'est un asset reçu
                             }
@@ -166,25 +171,55 @@ function trackWalletsAssets(walletList) {
                             console.log('Erreur lors de la récupération de l\'event pour l\'asset ' + asset.name + ' sur l\'adresse ' + address);
                         }
                         if (action == 'sell') {
-                            console.log('Vente de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString());
+                            console.log(`Vente de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                        \tPrix en ETH: ${(_b = (_a = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _a === void 0 ? void 0 : _a.payment_token) === null || _b === void 0 ? void 0 : _b.eth_price} ETH
+                        \tPrix en USD: ${(_d = (_c = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _c === void 0 ? void 0 : _c.payment_token) === null || _d === void 0 ? void 0 : _d.usd_price} USD
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `);
                             (0, _1.sell)(asset);
                         }
                         else if (action == 'buy') {
-                            console.log('Achat de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString());
+                            console.log(`Achat de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                        \tPrix en ETH: ${(_f = (_e = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _e === void 0 ? void 0 : _e.payment_token) === null || _f === void 0 ? void 0 : _f.eth_price} ETH
+                        \tPrix en USD: ${(_h = (_g = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _g === void 0 ? void 0 : _g.payment_token) === null || _h === void 0 ? void 0 : _h.usd_price} USD
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `);
                             (0, _1.buy)(asset);
                         }
                         else if (action == 'mint') {
-                            console.log('Mint de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString());
+                            console.log(`Mint de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `);
                             (0, _1.mint)(asset);
                         }
                         else if (action == 'airdrop') {
-                            console.log('Airdrop de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString());
+                            console.log(`Airdrop de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `);
                         }
                         else if (action == 'send') {
-                            console.log('Envoi de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString());
+                            console.log(`Envoi de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `);
                         }
                         else {
-                            console.log('unknown event type');
+                            console.log(`Evenement inconnu pour l'asset ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `);
                         }
                     }
                 }

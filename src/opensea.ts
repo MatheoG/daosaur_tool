@@ -4,14 +4,14 @@ import { asset } from './interface';
 import { sell, buy, mint } from '.';
 import fs from 'fs';
 
-async function getAdresseAsset(address:string){
+async function getAdresseAsset(address: string) {
     const openseaUrl = 'https://api.opensea.io/api/v1/assets'
     let assets: asset[] = []
     let cursor = ''
     let error = false;
     //on boucle jusqu'a ce qu'il n'y ait plus d'erreur
     do {
-        await axios.get(openseaUrl, {
+        const response = await axios.get(openseaUrl, {
             headers: {
                 'X-API-KEY': process.env.OPENSEA_API_KEY
             },
@@ -21,22 +21,20 @@ async function getAdresseAsset(address:string){
                 cursor: cursor,
             }
         })
-        .then(async (response) => {
-            //console.log(response.data)
-            if(response.status == 200){
-                assets.push(...response.data.assets)
-                cursor = response.data.next
-            }else{
-                console.log("Erreur lors de la requete de récupération des assets")
+            .catch(async (error) => {
+                console.log("Erreur lors de la requete de récupération des assets, owner: " + address + ", limit: 200, cursor: " + cursor + "")
                 error = true
-            }
-        })
-        .catch(async (error) => {
-            console.log("Erreur lors de la requete de récupération des assets")
+            });
+        if (response && response.status == 200 && response.data?.assets && response.data.assets.length > 0) {
+            assets.push(...response.data.assets)
+            cursor = response.data.next
+            error = false
+        } else {
+            console.log("Erreur lors de la requete de récupération des assets, owner: " + address + ", limit: 200, cursor: " + cursor + "")
             error = true
-        });
+        }
         await new Promise(r => setTimeout(r, 4000));
-    } while (cursor && !error)
+    } while (cursor || error)
     return assets
 }
 
@@ -56,7 +54,7 @@ export async function getWalletsAssets(walletList: string[]) {
 async function getAssetEvent(asset: asset) {
     const openseaUrl = 'https://api.opensea.io/api/v1/events'
     let error = false
-    let cursor:string = ''
+    let cursor: string = ''
     //on boucle jusqu'a ce qu'il n'y ait plus d'erreur
     do {
         await new Promise(resolve => setTimeout(resolve, 4000));
@@ -70,25 +68,28 @@ async function getAssetEvent(asset: asset) {
                 cursor: cursor,
             },
         })
-        .catch(async (error) => {
-            console.log("Erreur lors de la requete de récupération des events")
-            error = true
-        });
-        if(response && response.status == 200){
+            .catch(async (error) => {
+                console.log("Erreur lors de la requete de récupération des events")
+                error = true
+            });
+        if (response && response.status == 200) {
             const data = await response?.data
-            for (const event of data?.asset_events) {
-                if (event.event_type === 'successful') {
+            let i = 0
+            while (i < data?.asset_events.length) {
+                const event = data?.asset_events[i]
+                if (event.event_type == 'successful') {
                     return 'successful'
-                } 
-                else if (event.event_type === 'transfer' && event.from_account.address == '0x0000000000000000000000000000000000000000') {
-                    return 'mint'  
-                } 
-                else if (event.event_type === 'transfer') {
+                } else if (event.event_type == 'transfer' && event.from_account.address == '0x0000000000000000000000000000000000000000') {
+                    return 'mint'
+                } else if (event.event_type == 'transfer') {
+                    if (i < data?.asset_events.length - 1 && data?.asset_events[i + 1].event_type == 'successful') {
+                        return 'successful'
+                    }
                     return 'transfer'
                 }
             }
             cursor = data?.next
-        }else{
+        } else {
             console.log("Erreur lors de la requete de récupération des events")
             error = true
         }
@@ -99,29 +100,29 @@ async function getAssetEvent(asset: asset) {
 export async function trackWalletsAssets(walletList: string[]) {
     console.log('Tracking lancé le ' + new Date().toLocaleString());
     const oldWalletFile = '' // fs.readFileSync('./oldWallet.json', 'utf8')
-    let oldWalletAsset = oldWalletFile.length>0 ? JSON.parse(oldWalletFile) : await getWalletsAssets(walletList)
+    let oldWalletAsset = oldWalletFile.length > 0 ? JSON.parse(oldWalletFile) : await getWalletsAssets(walletList)
     while (true) {
         console.log('Checking...')
         const walletAsset = await getWalletsAssets(walletList)
-        for(const address of walletList){
+        for (const address of walletList) {
             //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
             //nand pour voir les asset different entre l'ancienne liste et la nouvelle
             let nandList = oldWalletAsset[address]
                 .filter((item: asset) => !walletAsset[address].some((z: asset) => z.id === item.id))
                 .concat(walletAsset[address].filter((item: asset) => !oldWalletAsset[address].some((z: asset) => z.id === item.id)));
-            if(walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0){
+            if (walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0) {
                 console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length)
             }
-            console.log("pour l'adresse " + address + " - " +nandList.length + ' asset(s) ont changé');
+            console.log("pour l'adresse " + address + " - " + nandList.length + ' asset(s) ont changé');
             //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
             if (nandList.length > 0 && nandList.length < 100) {
                 for (const asset of nandList) {
                     let action = ''
-                    const event = await getAssetEvent(asset)  
+                    const event = await getAssetEvent(asset)
                     //si c'est un achat ou une vente
                     if (event == 'successful') {
                         //si l'asset est dans l'ancienne liste c'est une vente
-                        if (asset in oldWalletAsset[address]) {
+                        if (oldWalletAsset[address].find((x: asset) => x.id == asset.id)) {
                             action = 'sell'
                         }
                         //si l'asset est dans la nouvelle liste c'est un achat
@@ -130,39 +131,69 @@ export async function trackWalletsAssets(walletList: string[]) {
                         }
                         //si c'est un transfert
                     }
-                    else if(event == 'mint') {
+                    else if (event == 'mint') {
                         action = 'mint'
-                    } 
-                    else if(event == 'transfer') {
+                    }
+                    else if (event == 'transfer') {
                         //si l'asset est dans l'ancienne liste c'est un envoi
-                        if (asset in oldWalletAsset[address]) {
+                        if (oldWalletAsset[address].find((x: asset) => x.id == asset.id)) {
                             action = 'send'
                             //si l'asset est dans la nouvelle liste c'est un asset reçu
                         } else {
-                            action = 'airdrop' 
+                            action = 'airdrop'
                         }
-                    }else{
+                    } else {
                         console.log('Erreur lors de la récupération de l\'event pour l\'asset ' + asset.name + ' sur l\'adresse ' + address)
                     }
-                    if(action == 'sell'){
-                        console.log('Vente de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
+                    if (action == 'sell') {
+                        console.log(`Vente de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                        \tPrix en ETH: ${asset?.last_sale?.payment_token?.eth_price} ETH
+                        \tPrix en USD: ${asset?.last_sale?.payment_token?.usd_price} USD
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `)
                         sell(asset)
-                    }else if(action == 'buy'){
-                        console.log('Achat de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
+                    } else if (action == 'buy') {
+                        console.log(`Achat de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                        \tPrix en ETH: ${asset?.last_sale?.payment_token?.eth_price} ETH
+                        \tPrix en USD: ${asset?.last_sale?.payment_token?.usd_price} USD
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `)
                         buy(asset)
-                    }else if(action == 'mint'){
-                        console.log('Mint de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
+                    } else if (action == 'mint') {
+                        console.log(`Mint de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `)
                         mint(asset)
-                    }else if(action == 'airdrop'){
-                        console.log('Airdrop de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
-                    }else if(action == 'send'){
-                        console.log('Envoi de ' + asset.name + ' sur l\'adresse ' + address + ' le ' + new Date().toLocaleString())
-                    }else {
-                        console.log('unknown event type')
+                    } else if (action == 'airdrop') {
+                        console.log(`Airdrop de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `)
+                    } else if (action == 'send') {
+                        console.log(`Envoi de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `)
+                    } else {
+                        console.log(`Evenement inconnu pour l'asset ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                        \tContract: ${asset.asset_contract.address}
+                        \tToken ID: ${asset.token_id}
+                        \tOpenSea: ${asset.permalink}
+                        `)
                     }
                 }
-            }    
-            if(nandList.length > 100){
+            }
+            if (nandList.length > 100) {
                 console.log('Resultat erroné trop d\'asset ont changé')
             }
             //fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
