@@ -91,8 +91,10 @@ function getAssetEvent(asset) {
                 error = true;
             }));
             if (response && response.status == 200) {
-                const data = yield (response === null || response === void 0 ? void 0 : response.data);
+                const data = response === null || response === void 0 ? void 0 : response.data;
                 let i = 0;
+                cursor = data === null || data === void 0 ? void 0 : data.next;
+                error = false;
                 while (i < (data === null || data === void 0 ? void 0 : data.asset_events.length)) {
                     const event = data === null || data === void 0 ? void 0 : data.asset_events[i];
                     if (event.event_type == 'successful') {
@@ -107,8 +109,8 @@ function getAssetEvent(asset) {
                         }
                         return 'transfer';
                     }
+                    i++;
                 }
-                cursor = data === null || data === void 0 ? void 0 : data.next;
             }
             else {
                 console.log("Erreur lors de la requete de récupération des events");

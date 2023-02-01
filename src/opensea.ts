@@ -68,13 +68,15 @@ async function getAssetEvent(asset: asset) {
                 cursor: cursor,
             },
         })
-            .catch(async (error) => {
-                console.log("Erreur lors de la requete de récupération des events")
-                error = true
-            });
+        .catch(async (error) => {
+            console.log("Erreur lors de la requete de récupération des events")
+            error = true
+        });
         if (response && response.status == 200) {
-            const data = await response?.data
+            const data = response?.data
             let i = 0
+            cursor = data?.next
+            error = false
             while (i < data?.asset_events.length) {
                 const event = data?.asset_events[i]
                 if (event.event_type == 'successful') {
@@ -87,8 +89,8 @@ async function getAssetEvent(asset: asset) {
                     }
                     return 'transfer'
                 }
+                i++
             }
-            cursor = data?.next
         } else {
             console.log("Erreur lors de la requete de récupération des events")
             error = true
