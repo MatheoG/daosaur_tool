@@ -16,6 +16,7 @@ exports.getContract = exports.trackWalletsAssets = exports.getWalletsAssets = vo
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = require("dotenv");
 const _1 = require(".");
+const _2 = require(".");
 function getAdresseAsset(address) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -120,119 +121,123 @@ function getAssetEvent(asset) {
         return 'no event';
     });
 }
-function trackWalletsAssets(walletList) {
+function trackWalletsAssets() {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     return __awaiter(this, void 0, void 0, function* () {
-        console.log('Tracking lancé le ' + new Date().toLocaleString());
-        const oldWalletFile = ''; // fs.readFileSync('./oldWallet.json', 'utf8')
-        let oldWalletAsset = oldWalletFile.length > 0 ? JSON.parse(oldWalletFile) : yield getWalletsAssets(walletList);
         while (true) {
-            console.log('Checking...');
-            const walletAsset = yield getWalletsAssets(walletList);
-            for (const address of walletList) {
-                //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
-                //nand pour voir les asset different entre l'ancienne liste et la nouvelle
-                let nandList = oldWalletAsset[address]
-                    .filter((item) => !walletAsset[address].some((z) => z.id === item.id))
-                    .concat(walletAsset[address].filter((item) => !oldWalletAsset[address].some((z) => z.id === item.id)));
-                if (walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0) {
-                    console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length);
-                }
-                console.log("pour l'adresse " + address + " - " + nandList.length + ' asset(s) ont changé');
-                //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
-                if (nandList.length > 0 && nandList.length < 100) {
-                    for (const asset of nandList) {
-                        let action = '';
-                        const event = yield getAssetEvent(asset);
-                        //si c'est un achat ou une vente
-                        if (event == 'successful') {
-                            //si l'asset est dans l'ancienne liste c'est une vente
-                            if (oldWalletAsset[address].find((x) => x.id == asset.id)) {
-                                action = 'sell';
+            let walletList = yield (0, _2.getWalletList)();
+            let walletListNew = walletList;
+            console.log('Tracking lancé le ' + new Date().toLocaleString());
+            let oldWalletAsset = yield getWalletsAssets(walletList);
+            do {
+                console.log('Checking...');
+                const walletAsset = yield getWalletsAssets(walletList);
+                for (const address of walletList) {
+                    //console.log('Nombre d\'asset pour ' + address + ': ' + walletAsset[address].length)
+                    //nand pour voir les asset different entre l'ancienne liste et la nouvelle
+                    let nandList = oldWalletAsset[address]
+                        .filter((item) => !walletAsset[address].some((z) => z.id === item.id))
+                        .concat(walletAsset[address].filter((item) => !oldWalletAsset[address].some((z) => z.id === item.id)));
+                    if (walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0) {
+                        console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length);
+                    }
+                    console.log("pour l'adresse " + address + " - " + nandList.length + ' asset(s) ont changé');
+                    //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
+                    if (nandList.length > 0 && nandList.length < 100) {
+                        for (const asset of nandList) {
+                            let action = '';
+                            const event = yield getAssetEvent(asset);
+                            //si c'est un achat ou une vente
+                            if (event == 'successful') {
+                                //si l'asset est dans l'ancienne liste c'est une vente
+                                if (oldWalletAsset[address].find((x) => x.id == asset.id)) {
+                                    action = 'sell';
+                                }
+                                //si l'asset est dans la nouvelle liste c'est un achat
+                                else {
+                                    action = 'buy';
+                                }
+                                //si c'est un transfert
                             }
-                            //si l'asset est dans la nouvelle liste c'est un achat
+                            else if (event == 'mint') {
+                                action = 'mint';
+                            }
+                            else if (event == 'transfer') {
+                                //si l'asset est dans l'ancienne liste c'est un envoi
+                                if (oldWalletAsset[address].find((x) => x.id == asset.id)) {
+                                    action = 'send';
+                                    //si l'asset est dans la nouvelle liste c'est un asset reçu
+                                }
+                                else {
+                                    action = 'airdrop';
+                                }
+                            }
                             else {
-                                action = 'buy';
+                                console.log('Erreur lors de la récupération de l\'event pour l\'asset ' + asset.name + ' sur l\'adresse ' + address);
                             }
-                            //si c'est un transfert
-                        }
-                        else if (event == 'mint') {
-                            action = 'mint';
-                        }
-                        else if (event == 'transfer') {
-                            //si l'asset est dans l'ancienne liste c'est un envoi
-                            if (oldWalletAsset[address].find((x) => x.id == asset.id)) {
-                                action = 'send';
-                                //si l'asset est dans la nouvelle liste c'est un asset reçu
+                            if (action == 'sell') {
+                                console.log(`Vente de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                            \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                            \tPrix en ETH: ${(_b = (_a = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _a === void 0 ? void 0 : _a.payment_token) === null || _b === void 0 ? void 0 : _b.eth_price} ETH
+                            \tPrix en USD: ${(_d = (_c = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _c === void 0 ? void 0 : _c.payment_token) === null || _d === void 0 ? void 0 : _d.usd_price} USD
+                            \tContract: ${asset.asset_contract.address}
+                            \tToken ID: ${asset.token_id}
+                            \tOpenSea: ${asset.permalink}
+                            `);
+                                (0, _1.sell)(asset, address);
+                            }
+                            else if (action == 'buy') {
+                                console.log(`Achat de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                            \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                            \tPrix en ETH: ${(_f = (_e = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _e === void 0 ? void 0 : _e.payment_token) === null || _f === void 0 ? void 0 : _f.eth_price} ETH
+                            \tPrix en USD: ${(_h = (_g = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _g === void 0 ? void 0 : _g.payment_token) === null || _h === void 0 ? void 0 : _h.usd_price} USD
+                            \tContract: ${asset.asset_contract.address}
+                            \tToken ID: ${asset.token_id}
+                            \tOpenSea: ${asset.permalink}
+                            `);
+                                (0, _1.buy)(asset, address);
+                            }
+                            else if (action == 'mint') {
+                                console.log(`Mint de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                            \tContract: ${asset.asset_contract.address}
+                            \tToken ID: ${asset.token_id}
+                            \tOpenSea: ${asset.permalink}
+                            `);
+                                (0, _1.mint)(asset, address);
+                            }
+                            else if (action == 'airdrop') {
+                                console.log(`Airdrop de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                            \tContract: ${asset.asset_contract.address}
+                            \tToken ID: ${asset.token_id}
+                            \tOpenSea: ${asset.permalink}
+                            `);
+                            }
+                            else if (action == 'send') {
+                                console.log(`Envoi de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                            \tContract: ${asset.asset_contract.address}
+                            \tToken ID: ${asset.token_id}
+                            \tOpenSea: ${asset.permalink}
+                            `);
                             }
                             else {
-                                action = 'airdrop';
+                                console.log(`Evenement inconnu pour l'asset ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
+                            \tContract: ${asset.asset_contract.address}
+                            \tToken ID: ${asset.token_id}
+                            \tOpenSea: ${asset.permalink}
+                            `);
                             }
-                        }
-                        else {
-                            console.log('Erreur lors de la récupération de l\'event pour l\'asset ' + asset.name + ' sur l\'adresse ' + address);
-                        }
-                        if (action == 'sell') {
-                            console.log(`Vente de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                        \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
-                        \tPrix en ETH: ${(_b = (_a = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _a === void 0 ? void 0 : _a.payment_token) === null || _b === void 0 ? void 0 : _b.eth_price} ETH
-                        \tPrix en USD: ${(_d = (_c = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _c === void 0 ? void 0 : _c.payment_token) === null || _d === void 0 ? void 0 : _d.usd_price} USD
-                        \tContract: ${asset.asset_contract.address}
-                        \tToken ID: ${asset.token_id}
-                        \tOpenSea: ${asset.permalink}
-                        `);
-                            (0, _1.sell)(asset);
-                        }
-                        else if (action == 'buy') {
-                            console.log(`Achat de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                        \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
-                        \tPrix en ETH: ${(_f = (_e = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _e === void 0 ? void 0 : _e.payment_token) === null || _f === void 0 ? void 0 : _f.eth_price} ETH
-                        \tPrix en USD: ${(_h = (_g = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _g === void 0 ? void 0 : _g.payment_token) === null || _h === void 0 ? void 0 : _h.usd_price} USD
-                        \tContract: ${asset.asset_contract.address}
-                        \tToken ID: ${asset.token_id}
-                        \tOpenSea: ${asset.permalink}
-                        `);
-                            (0, _1.buy)(asset);
-                        }
-                        else if (action == 'mint') {
-                            console.log(`Mint de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                        \tContract: ${asset.asset_contract.address}
-                        \tToken ID: ${asset.token_id}
-                        \tOpenSea: ${asset.permalink}
-                        `);
-                            (0, _1.mint)(asset);
-                        }
-                        else if (action == 'airdrop') {
-                            console.log(`Airdrop de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                        \tContract: ${asset.asset_contract.address}
-                        \tToken ID: ${asset.token_id}
-                        \tOpenSea: ${asset.permalink}
-                        `);
-                        }
-                        else if (action == 'send') {
-                            console.log(`Envoi de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                        \tContract: ${asset.asset_contract.address}
-                        \tToken ID: ${asset.token_id}
-                        \tOpenSea: ${asset.permalink}
-                        `);
-                        }
-                        else {
-                            console.log(`Evenement inconnu pour l'asset ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                        \tContract: ${asset.asset_contract.address}
-                        \tToken ID: ${asset.token_id}
-                        \tOpenSea: ${asset.permalink}
-                        `);
                         }
                     }
+                    if (nandList.length > 100) {
+                        console.log('Resultat erroné trop d\'asset ont changé');
+                    }
+                    //fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
                 }
-                if (nandList.length > 100) {
-                    console.log('Resultat erroné trop d\'asset ont changé');
-                }
-                //fs.writeFileSync('./oldWallet.json', JSON.stringify(oldWalletAsset));
-            }
-            oldWalletAsset = walletAsset;
-            //console.log('Analyse terminée on recommence')
-            //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
+                oldWalletAsset = walletAsset;
+                //console.log('Analyse terminée on recommence')
+                //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
+                walletListNew = yield (0, _2.getWalletList)();
+            } while (walletListNew.length == walletList.length);
         }
     });
 }

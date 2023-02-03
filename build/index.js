@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mint = exports.buy = exports.sell = void 0;
+exports.mint = exports.buy = exports.sell = exports.getWalletList = void 0;
 const axios_1 = __importDefault(require("axios"));
 const opensea_1 = require("./opensea");
 const discord_js_1 = require("discord.js");
@@ -30,93 +30,100 @@ const intents = [
 ];
 const client = new discord_js_1.Client({ intents: intents, partials: [discord_js_1.Partials.Message, discord_js_1.Partials.Channel, discord_js_1.Partials.Reaction] });
 //get Address list
-let AddressList = [];
 let guild;
-const sheetUrl = "https://docs.google.com/spreadsheets/d/1rgcsVSTellDkHmgE8rjtrrHFLpkGzsS2/gviz/tq?tqx=out:csv&sheet=Feuil1";
-axios_1.default.get(sheetUrl).then((response) => __awaiter(void 0, void 0, void 0, function* () {
-    const data = yield response.data;
-    let i = 0;
-    for (const line of data.split('\n')) {
-        i++;
-        const address = line.split('"')[1].replace(" ", "").replace('\t', '');
-        AddressList.push(address);
-    }
-    //AddressList = ['0xAF0bF449840aE803cB1F9ECdb8e14E57086269D6', '0x4e21da6a36213b6d1a5330efad5223a88f00aa2c']
-    (0, opensea_1.trackWalletsAssets)(AddressList);
-}));
-let collectionBuyHistory = [];
-let collectionSellHistory = [];
-let collectionMintHistory = [];
-const heure = 48;
-function sell(asset) {
+function getWalletList() {
     return __awaiter(this, void 0, void 0, function* () {
-        // let i = collectionSellHistory.length - 1
-        // let nb = 1
-        // while (i >= 0 && collectionSellHistory[i].timestamp > Date.now() - heure * 3600000) {
-        //     if (collectionSellHistory[i].asset_contract == asset.asset_contract.address) {
-        //         nb++
-        //     }
-        //     i--
-        // }
-        // if(nb >= 2){
-        const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_SELL_CHANNEL ? process.env.DISCORD_SELL_CHANNEL : "");
-        if (channel && 'send' in channel) {
-            channel.send(`New sell of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
+        let AddressList = [];
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1rgcsVSTellDkHmgE8rjtrrHFLpkGzsS2/gviz/tq?tqx=out:csv&sheet=Feuil1";
+        const response = yield axios_1.default.get(sheetUrl);
+        const data = response.data;
+        let i = 0;
+        for (const line of data.split('\n')) {
+            i++;
+            const address = line.split('"')[1].replace(" ", "").replace('\t', '');
+            AddressList.push(address);
         }
-        // }
-        // collectionSellHistory.push({
-        //     asset_contract: asset.asset_contract.address,
-        //     timestamp: Date.now(),
-        // })
+        return AddressList;
+    });
+}
+exports.getWalletList = getWalletList;
+let sellHistory = [];
+let buyHistory = [];
+let mintHistory = [];
+const heure = 48;
+function sell(asset, address) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (sellHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address)) {
+            //update timestamp
+            sellHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address).timestamp = Date.now();
+        }
+        else {
+            sellHistory.push({
+                adresse: address,
+                asset_contract: asset.asset_contract.address,
+                timestamp: Date.now(),
+            });
+        }
+        const sellHistoryLast = sellHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000);
+        if (sellHistoryLast.length >= 2) {
+            const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_SELL_CHANNEL ? process.env.DISCORD_SELL_CHANNEL : "");
+            const AddressList = yield getWalletList();
+            if (channel && 'send' in channel) {
+                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was sell by ${sellHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
+            }
+        }
     });
 }
 exports.sell = sell;
-function buy(asset) {
+function buy(asset, address) {
     return __awaiter(this, void 0, void 0, function* () {
-        // let i = collectionBuyHistory.length - 1
-        // let nb = 1
-        // while (i >= 0 && collectionBuyHistory[i].timestamp > Date.now() - heure * 3600000) {
-        //     if (collectionBuyHistory[i].asset_contract == asset.asset_contract.address) {
-        //         nb++
-        //     }
-        //     i--
-        // }
-        // if (nb >= 2) {
-        const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_BUY_CHANNEL ? process.env.DISCORD_BUY_CHANNEL : "");
-        if (channel && 'send' in channel) {
-            channel.send(`New buy of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
+        if (buyHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address)) {
+            //update timestamp
+            buyHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address).timestamp = Date.now();
         }
-        // }
-        // collectionBuyHistory.push({
-        //     asset_contract: asset.asset_contract.address,
-        //     timestamp: Date.now(),
-        // })
+        else {
+            buyHistory.push({
+                adresse: address,
+                asset_contract: asset.asset_contract.address,
+                timestamp: Date.now(),
+            });
+        }
+        const buyHistoryLast = buyHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000);
+        if (buyHistoryLast.length >= 2) {
+            const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_BUY_CHANNEL ? process.env.DISCORD_BUY_CHANNEL : "");
+            const AddressList = yield getWalletList();
+            if (channel && 'send' in channel) {
+                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was bought by ${buyHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
+            }
+        }
     });
 }
 exports.buy = buy;
-function mint(asset) {
+function mint(asset, address) {
     return __awaiter(this, void 0, void 0, function* () {
-        // let i = collectionMintHistory.length - 1
-        // let nb = 1
-        // while (i >= 0 && collectionMintHistory[i].timestamp > Date.now() - heure * 3600000) {
-        //     if (collectionMintHistory[i].asset_contract == asset.asset_contract.address) {
-        //         nb++
-        //     }
-        //     i--
-        // }
-        // if(nb >= 2){
-        const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_MINT_CHANNEL ? process.env.DISCORD_MINT_CHANNEL : "");
-        if (channel && 'send' in channel) {
-            channel.send(`New mints of ${asset.asset_contract.name} (https://opensea.io/collection/${asset.collection.slug})`);
+        if (mintHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address)) {
+            //update timestamp
+            mintHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address).timestamp = Date.now();
         }
-        // }
-        // collectionMintHistory.push({
-        //     asset_contract: asset.asset_contract.address,
-        //     timestamp: Date.now(),
-        // })
+        else {
+            mintHistory.push({
+                adresse: address,
+                asset_contract: asset.asset_contract.address,
+                timestamp: Date.now(),
+            });
+        }
+        const mintHistoryLast = mintHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000);
+        const AddressList = yield getWalletList();
+        if (mintHistoryLast.length >= 2) {
+            const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_MINT_CHANNEL ? process.env.DISCORD_MINT_CHANNEL : "");
+            if (channel && 'send' in channel) {
+                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
+            }
+        }
     });
 }
 exports.mint = mint;
+(0, opensea_1.trackWalletsAssets)();
 client.on('ready', () => {
     guild = client.guilds.cache.get('971028591359967232');
 });
