@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mint = exports.buy = exports.sell = exports.getWalletList = void 0;
+exports.mint = exports.buy = exports.sell = exports.getWalletNb = exports.getHours = exports.getWalletList = void 0;
 const axios_1 = __importDefault(require("axios"));
 const opensea_1 = require("./opensea");
 const discord_js_1 = require("discord.js");
@@ -47,10 +47,30 @@ function getWalletList() {
     });
 }
 exports.getWalletList = getWalletList;
+function getHours() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1rgcsVSTellDkHmgE8rjtrrHFLpkGzsS2/gviz/tq?tqx=out:csv&sheet=Config&range=B1:B1";
+        const response = yield axios_1.default.get(sheetUrl);
+        const data = response.data;
+        const hour = data.replace('"', '');
+        return parseInt(hour);
+    });
+}
+exports.getHours = getHours;
+function getWalletNb() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/1rgcsVSTellDkHmgE8rjtrrHFLpkGzsS2/gviz/tq?tqx=out:csv&sheet=Config&range=B2:B2";
+        const response = yield axios_1.default.get(sheetUrl);
+        const data = response.data;
+        const walletNb = data.replace('"', '');
+        return parseInt(walletNb);
+    });
+}
+exports.getWalletNb = getWalletNb;
 let sellHistory = [];
 let buyHistory = [];
 let mintHistory = [];
-const heure = 48;
+let MessageHistory = [];
 function sell(asset, address) {
     return __awaiter(this, void 0, void 0, function* () {
         if (sellHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address)) {
@@ -64,13 +84,20 @@ function sell(asset, address) {
                 timestamp: Date.now(),
             });
         }
-        const sellHistoryLast = sellHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000);
-        if (sellHistoryLast.length >= 2) {
+        const heure = yield getHours();
+        const AddressList = yield getWalletList();
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was sell by ${sellHistory.length} wallets on ${AddressList.length} identified wallets!`;
+        //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur à 2
+        const sellHistoryLast = sellHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
+        if (sellHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {
             const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_SELL_CHANNEL ? process.env.DISCORD_SELL_CHANNEL : "");
-            const AddressList = yield getWalletList();
             if (channel && 'send' in channel) {
-                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was sell by ${sellHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
+                channel.send(message);
             }
+            MessageHistory.push({
+                message: message,
+                timestamp: Date.now()
+            });
         }
     });
 }
@@ -88,13 +115,20 @@ function buy(asset, address) {
                 timestamp: Date.now(),
             });
         }
-        const buyHistoryLast = buyHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000);
-        if (buyHistoryLast.length >= 2) {
+        const heure = yield getHours();
+        const buyHistoryLast = buyHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
+        const AddressList = yield getWalletList();
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was buy by ${buyHistoryLast.length} wallets on ${AddressList.length} identified wallets!`;
+        //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur à 2*
+        if (buyHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {
             const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_BUY_CHANNEL ? process.env.DISCORD_BUY_CHANNEL : "");
-            const AddressList = yield getWalletList();
             if (channel && 'send' in channel) {
-                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was bought by ${buyHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
+                channel.send(message);
             }
+            MessageHistory.push({
+                message: message,
+                timestamp: Date.now()
+            });
         }
     });
 }
@@ -106,19 +140,27 @@ function mint(asset, address) {
             mintHistory.find((e) => e.adresse == address && e.asset_contract == asset.asset_contract.address).timestamp = Date.now();
         }
         else {
+            //ajout dans l'historique
             mintHistory.push({
                 adresse: address,
                 asset_contract: asset.asset_contract.address,
                 timestamp: Date.now(),
             });
         }
-        const mintHistoryLast = mintHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000);
+        const heure = yield getHours();
+        const mintHistoryLast = mintHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
         const AddressList = yield getWalletList();
-        if (mintHistoryLast.length >= 2) {
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length} wallets on ${AddressList.length} identified wallets!`;
+        //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur ou egal a 2
+        if (mintHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {
             const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_MINT_CHANNEL ? process.env.DISCORD_MINT_CHANNEL : "");
             if (channel && 'send' in channel) {
                 channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
             }
+            MessageHistory.push({
+                message: message,
+                timestamp: Date.now()
+            });
         }
     });
 }

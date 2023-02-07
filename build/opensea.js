@@ -139,9 +139,9 @@ function trackWalletsAssets() {
                         .filter((item) => !walletAsset[address].some((z) => z.id === item.id))
                         .concat(walletAsset[address].filter((item) => !oldWalletAsset[address].some((z) => z.id === item.id)));
                     if (walletAsset[address].length != oldWalletAsset[address].length && nandList.length === 0) {
-                        console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length);
+                        //console.log('erreur de filtre pour ' + address + ' - nombre d\'aaset avant: ' + oldWalletAsset[address].length + ' - nombre d\'asset apres: ' + walletAsset[address].length + ' - nombre d\'asset different: ' + nandList.length)
                     }
-                    console.log("pour l'adresse " + address + " - " + nandList.length + ' asset(s) ont changé');
+                    //console.log("pour l'adresse " + address + " - " + nandList.length + ' asset(s) ont changé');
                     //si il y a des assets qui ont changé mais pas plus de 100 (pour eviter les erreurs)
                     if (nandList.length > 0 && nandList.length < 100) {
                         for (const asset of nandList) {
