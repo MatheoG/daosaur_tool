@@ -86,7 +86,7 @@ function sell(asset, address) {
         }
         const heure = yield getHours();
         const AddressList = yield getWalletList();
-        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was sell by ${sellHistory.length} wallets on ${AddressList.length} identified wallets!`;
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was sold by ${sellHistory.length} wallets on ${AddressList.length} identified wallets!`;
         //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur à 2
         const sellHistoryLast = sellHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
         if (sellHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {

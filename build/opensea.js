@@ -62,7 +62,7 @@ function getWalletsAssets(walletList) {
         for (const address of walletList) {
             i++;
             const AddAsset = yield getAdresseAsset(address);
-            console.log('Adresse: ' + i + '/' + walletList.length + ' - Nombre d\'asset pour ' + address + ': ' + AddAsset.length);
+            //console.log('Adresse: ' + i + '/' + walletList.length + ' - Nombre d\'asset pour ' + address + ': ' + AddAsset.length)
             adressAssets[address] = AddAsset;
         }
         return adressAssets;

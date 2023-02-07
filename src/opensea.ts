@@ -46,7 +46,7 @@ export async function getWalletsAssets(walletList: string[]) {
     for (const address of walletList) {
         i++
         const AddAsset = await getAdresseAsset(address)
-        console.log('Adresse: ' + i + '/' + walletList.length + ' - Nombre d\'asset pour ' + address + ': ' + AddAsset.length)
+        //console.log('Adresse: ' + i + '/' + walletList.length + ' - Nombre d\'asset pour ' + address + ': ' + AddAsset.length)
         adressAssets[address] = AddAsset
     }
     return adressAssets
