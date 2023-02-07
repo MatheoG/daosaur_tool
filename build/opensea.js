@@ -122,7 +122,7 @@ function getAssetEvent(asset) {
     });
 }
 function trackWalletsAssets() {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
     return __awaiter(this, void 0, void 0, function* () {
         while (true) {
             let walletList = yield (0, _2.getWalletList)();
@@ -176,9 +176,9 @@ function trackWalletsAssets() {
                             }
                             if (action == 'sell') {
                                 console.log(`Vente de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                            \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
-                            \tPrix en ETH: ${(_b = (_a = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _a === void 0 ? void 0 : _a.payment_token) === null || _b === void 0 ? void 0 : _b.eth_price} ETH
-                            \tPrix en USD: ${(_d = (_c = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _c === void 0 ? void 0 : _c.payment_token) === null || _d === void 0 ? void 0 : _d.usd_price} USD
+                            \tPrix: ${(_a = asset.last_sale) === null || _a === void 0 ? void 0 : _a.total_price} ${(_b = asset.last_sale) === null || _b === void 0 ? void 0 : _b.payment_token.symbol}
+                            \tPrix en ETH: ${(_d = (_c = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _c === void 0 ? void 0 : _c.payment_token) === null || _d === void 0 ? void 0 : _d.eth_price} ETH
+                            \tPrix en USD: ${(_f = (_e = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _e === void 0 ? void 0 : _e.payment_token) === null || _f === void 0 ? void 0 : _f.usd_price} USD
                             \tContract: ${asset.asset_contract.address}
                             \tToken ID: ${asset.token_id}
                             \tOpenSea: ${asset.permalink}
@@ -187,9 +187,9 @@ function trackWalletsAssets() {
                             }
                             else if (action == 'buy') {
                                 console.log(`Achat de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                            \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
-                            \tPrix en ETH: ${(_f = (_e = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _e === void 0 ? void 0 : _e.payment_token) === null || _f === void 0 ? void 0 : _f.eth_price} ETH
-                            \tPrix en USD: ${(_h = (_g = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _g === void 0 ? void 0 : _g.payment_token) === null || _h === void 0 ? void 0 : _h.usd_price} USD
+                            \tPrix: ${(_g = asset.last_sale) === null || _g === void 0 ? void 0 : _g.total_price} ${(_h = asset.last_sale) === null || _h === void 0 ? void 0 : _h.payment_token.symbol}
+                            \tPrix en ETH: ${(_k = (_j = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _j === void 0 ? void 0 : _j.payment_token) === null || _k === void 0 ? void 0 : _k.eth_price} ETH
+                            \tPrix en USD: ${(_m = (_l = asset === null || asset === void 0 ? void 0 : asset.last_sale) === null || _l === void 0 ? void 0 : _l.payment_token) === null || _m === void 0 ? void 0 : _m.usd_price} USD
                             \tContract: ${asset.asset_contract.address}
                             \tToken ID: ${asset.token_id}
                             \tOpenSea: ${asset.permalink}

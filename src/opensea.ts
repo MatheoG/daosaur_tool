@@ -69,10 +69,10 @@ async function getAssetEvent(asset: asset) {
                 cursor: cursor,
             },
         })
-        .catch(async (error) => {
-            console.log("Erreur lors de la requete de récupération des events")
-            error = true
-        });
+            .catch(async (error) => {
+                console.log("Erreur lors de la requete de récupération des events")
+                error = true
+            });
         if (response && response.status == 200) {
             const data = response?.data
             let i = 0
@@ -101,13 +101,13 @@ async function getAssetEvent(asset: asset) {
 }
 
 export async function trackWalletsAssets() {
-    while(true) {
+    while (true) {
         let walletList = await getWalletList()
         let walletListNew = walletList
         console.log('Tracking lancé le ' + new Date().toLocaleString());
         let oldWalletAsset = await getWalletsAssets(walletList)
 
-        do{
+        do {
             console.log('Checking...')
             const walletAsset = await getWalletsAssets(walletList)
             for (const address of walletList) {
@@ -152,7 +152,7 @@ export async function trackWalletsAssets() {
                         }
                         if (action == 'sell') {
                             console.log(`Vente de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                            \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                            \tPrix: ${asset.last_sale?.total_price} ${asset.last_sale?.payment_token.symbol}
                             \tPrix en ETH: ${asset?.last_sale?.payment_token?.eth_price} ETH
                             \tPrix en USD: ${asset?.last_sale?.payment_token?.usd_price} USD
                             \tContract: ${asset.asset_contract.address}
@@ -162,7 +162,7 @@ export async function trackWalletsAssets() {
                             sell(asset, address)
                         } else if (action == 'buy') {
                             console.log(`Achat de ${asset.name} sur l'adresse ${address} le ${new Date().toLocaleString()}
-                            \tPrix: ${asset.last_sale.total_price} ${asset.last_sale.payment_token.symbol}
+                            \tPrix: ${asset.last_sale?.total_price} ${asset.last_sale?.payment_token.symbol}
                             \tPrix en ETH: ${asset?.last_sale?.payment_token?.eth_price} ETH
                             \tPrix en USD: ${asset?.last_sale?.payment_token?.usd_price} USD
                             \tContract: ${asset.asset_contract.address}
@@ -207,7 +207,7 @@ export async function trackWalletsAssets() {
             //console.log('Analyse terminée on recommence')
             //await new Promise(resolve => setTimeout(resolve, 1000 * 60 * 60));
             walletListNew = await getWalletList()
-        }while(walletListNew.length == walletList.length)
+        } while (walletListNew.length == walletList.length)
     }
 
 }
