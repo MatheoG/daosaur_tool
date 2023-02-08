@@ -85,10 +85,10 @@ function sell(asset, address) {
             });
         }
         const heure = yield getHours();
-        const AddressList = yield getWalletList();
-        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was sold by ${sellHistory.length} wallets on ${AddressList.length} identified wallets!`;
-        //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur à 2
         const sellHistoryLast = sellHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
+        const AddressList = yield getWalletList();
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was sold by ${sellHistoryLast.length}/${AddressList.length} identified wallets!`;
+        //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur à 2
         if (sellHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {
             const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_SELL_CHANNEL ? process.env.DISCORD_SELL_CHANNEL : "");
             if (channel && 'send' in channel) {
@@ -118,7 +118,7 @@ function buy(asset, address) {
         const heure = yield getHours();
         const buyHistoryLast = buyHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
         const AddressList = yield getWalletList();
-        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was buy by ${buyHistoryLast.length} wallets on ${AddressList.length} identified wallets!`;
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was bought by ${buyHistoryLast.length}/${AddressList.length} identified wallets!`;
         //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur à 2*
         if (buyHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {
             const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_BUY_CHANNEL ? process.env.DISCORD_BUY_CHANNEL : "");
@@ -150,12 +150,12 @@ function mint(asset, address) {
         const heure = yield getHours();
         const mintHistoryLast = mintHistory.filter((e) => e.timestamp > Date.now() - heure * 3600000 && e.asset_contract == asset.asset_contract.address);
         const AddressList = yield getWalletList();
-        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length} wallets on ${AddressList.length} identified wallets!`;
+        const message = `Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length}/${AddressList.length} identified wallets!`;
         //verifier si le message n'a pas deja ete envoye dans les 60 dernières minutes et si le nombre de wallet est superieur ou egal a 2
         if (mintHistoryLast.length >= (yield getWalletNb()) && !MessageHistory.find((e) => e.message == message && e.timestamp > Date.now() - 3600000)) {
             const channel = guild === null || guild === void 0 ? void 0 : guild.channels.cache.get(process.env.DISCORD_MINT_CHANNEL ? process.env.DISCORD_MINT_CHANNEL : "");
             if (channel && 'send' in channel) {
-                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length} wallets on ${AddressList.length} identified wallets!`);
+                channel.send(`Collection https://opensea.io/collection/${asset.collection.slug} was minted by ${mintHistoryLast.length}/${AddressList.length} identified wallets!`);
             }
             MessageHistory.push({
                 message: message,
